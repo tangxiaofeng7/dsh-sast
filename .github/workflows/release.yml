@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      # The `secrets` context is not readable in a step-level `if`; this
+      # job-level flag is the standard relay. Publishing stays skipped (not
+      # failing) until the repo's NPM_TOKEN secret is configured.
+      NPM_PUBLISH_ENABLED: ${{ secrets.NPM_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Build release archive
+        shell: bash
+        run: |
+          mkdir dist
+          npm pack --pack-destination dist
+          mv dist/*.tgz dist/dsh-sast.tar.gz
+
+      - name: Verify tarball contents
+        shell: bash
+        # Grep the listing from a FILE, not a `tar | grep -q` pipeline: -q
+        # exits on the first match, tar then dies writing a closed pipe, and
+        # the step's pipefail turns that SIGPIPE into a false failure.
+        run: |
+          tar -tzf dist/dsh-sast.tar.gz > /tmp/tarball-listing.txt
+          for pattern in \
+            'package/lib/ui-sast.client.js' \
+            'package/lib/sast.js' \
+            'package/lib/batch-scheduler.js' \
+            'package/lib/storage-sqlite.js' \
+            'package/lib/preset-root.js' \
+            'package/preset/sast/' \
+            'package/cordis.patch.yml' \
+            'package/LICENSE'
+          do
+            grep -qF -- "$pattern" /tmp/tarball-listing.txt
+          done
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*.tar.gz
+          # README points installers at releases/latest/download/dsh-sast.tar.gz,
+          # which GitHub only resolves for a release marked Latest. Without these
+          # two lines the action auto-detects a `-rc.`/`-alpha.` tag as a
+          # pre-release, and pre-releases are excluded from the latest URL.
+          prerelease: false
+          make_latest: true
+
+      # The GitHub Release above is the README's documented install path; npm
+      # publishing activates automatically once NPM_TOKEN is configured.
+      - name: Publish to npm
+        if: env.NPM_PUBLISH_ENABLED == 'true'
+        run: |
+          version=$(node -p "require('./package.json').version")
+          npm publish --provenance --access public --tag ${{ contains(github.ref_name, '-rc.') && 'next' || contains(github.ref_name, '-alpha.') && 'alpha' || 'latest' }}
+          # Keep npm's `latest` in lockstep with the GitHub `make_latest` flag:
+          # `npx @tangxiaofeng7/dsh-sast` resolves `latest`, so every published
+          # tag must land there for the README quick-start to work.
+          npm dist-tag add "@tangxiaofeng7/dsh-sast@$version" latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

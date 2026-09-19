@@ -1,0 +1,199 @@
+/* The 漏洞 sub-tab: one card per finding with severity, tags, description,
+   the code evidence chain (with permalink/copy actions per hop), the
+   affected asset, and the methodology origin line. */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finding {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.severity {
+  flex: none;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 12px;
+  line-height: 22px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.severity[data-severity='critical'],
+.severity[data-severity='high'] {
+  color: #fff;
+  background: var(--dsw-alias-state-error-primary);
+}
+
+.severity[data-severity='medium'] {
+  color: #fff;
+  background: var(--dsw-alias-state-warn-primary);
+}
+
+.severity[data-severity='low'] {
+  color: #fff;
+  background: var(--dsw-alias-state-business-primary);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+
+.id {
+  flex: none;
+  font-size: 11px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-caption);
+}
+
+.tags {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.tag {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+  overflow-wrap: anywhere;
+}
+
+.codePathBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-base);
+}
+
+.codePathLabel {
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.codePath {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.hop {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hopIndex {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+}
+
+.hopLocation {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.hopSymbol {
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 12px;
+}
+
+.hopActions {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.hopAction {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.hopAction:hover {
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+}
+
+.asset {
+  margin: 0;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.origin {
+  margin: 0;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-caption);
+}
+
+.empty {
+  margin: 0;
+  padding: 24px 0;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+  color: var(--dsw-alias-label-caption);
+}
