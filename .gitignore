@@ -1,0 +1,14 @@
+# 依赖与构建临时产物
+node_modules/
+*.tgz
+*.tsbuildinfo
+.build-sast/
+**/coverage/
+src/dsh-client-ui-sast/dist/
+src/dsh-sast/dist/
+
+# 编辑器/系统杂项
+.DS_Store
+Thumbs.db
+*.log
+

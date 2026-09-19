@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "outDir": "lib/types",
+    "baseUrl": ".",
+    "paths": {
+      "@tangxiaofeng7/dsh-sast-host/client": ["../dsh-sast/src/client.ts"]
+    }
+  },
+  "include": ["src"]
+}

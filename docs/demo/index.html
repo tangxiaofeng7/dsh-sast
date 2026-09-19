@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dsh-sast · 白盒审计模式 UI Demo</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="banner">
+  <strong>纯前端 mock 演示</strong>
+  <span>无后端、无真实扫描、数据全部写死。用于确认界面与信息结构是否符合预期。</span>
+  <span class="banner-hint">建议先点右下角 <b>▶ 模拟审计推进</b> 观察实时刷新，再逐个子标签检查。</span>
+</div>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-title">会话列表<span class="sidebar-note">（点击切换，观察标签页可见性）</span></div>
+    <ul id="session-list" class="session-list"></ul>
+    <div class="sidebar-foot">
+      标签可见条件（命中任一）：预设名为 <code>sast</code> / <code>sast-*</code>；
+      本会话 <code>sastMounted=true</code>；沿 <code>parentId</code> 上溯的祖先链命中。
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="view-tabs" id="view-tabs"></div>
+
+    <section id="view-conversation" class="view">
+      <div class="conv-scroll" id="conv-scroll"></div>
+    </section>
+
+    <section id="view-sast" class="view">
+      <div id="sast-empty" class="empty-state" hidden></div>
+      <div id="sast-body">
+        <header id="scan-header"></header>
+        <nav id="sub-tabs" class="sub-tabs"></nav>
+        <div id="sub-content" class="sub-content"></div>
+      </div>
+    </section>
+  </main>
+
+</div>
+
+<div id="drawer-root"></div>
+<div id="toast-root" class="toast-root"></div>
+
+<div class="playbar">
+  <button id="btn-play" class="pb-main">▶ 模拟审计推进</button>
+  <button id="btn-step" class="pb">单步 ›</button>
+  <button id="btn-reset" class="pb">重置</button>
+  <div class="pb-slider">
+    <input id="scrub" type="range" min="0" max="1" value="1">
+    <span id="scrub-label" class="pb-count">0 / 0</span>
+  </div>
+  <span class="pb-sep"></span>
+  <span class="pb-note" id="pb-note"></span>
+  <button id="btn-lang" class="pb">EN</button>
+</div>
+
+<script src="mock-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

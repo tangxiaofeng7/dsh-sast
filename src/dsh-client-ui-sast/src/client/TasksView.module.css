@@ -1,0 +1,189 @@
+/* The 任务与进度 sub-tab: a summary strip (check inclusion/completion +
+   intent status distribution) over one card per registered Skill, each
+   listing its checks with a derived state badge. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.metricLabel {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.metricValue {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.skills {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skill {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.skillHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sourceBadge {
+  flex: none;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  text-transform: capitalize;
+}
+
+.sourceBadge[data-source='builtin'] {
+  color: var(--dsw-alias-brand-primary);
+  background: var(--dsw-alias-state-business-tertiary);
+}
+
+.skillTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+
+.skillStatus {
+  flex: none;
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.skillStatus[data-enabled='false'] {
+  color: var(--dsw-alias-label-caption);
+}
+
+.skillProgress {
+  flex: none;
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.checkState {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.checkState[data-state='done'] {
+  color: #fff;
+  background: var(--dsw-alias-state-success-primary);
+}
+
+.checkState[data-state='running'] {
+  color: #fff;
+  background: var(--dsw-alias-state-business-primary);
+}
+
+.checkState[data-state='blocked'] {
+  color: #fff;
+  background: var(--dsw-alias-state-error-primary);
+}
+
+.checkId {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.checkTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--dsw-alias-label-secondary);
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  margin: 0;
+  padding: 24px 0;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+  color: var(--dsw-alias-label-caption);
+}
+
+.noMethodology {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
