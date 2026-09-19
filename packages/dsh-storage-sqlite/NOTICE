@@ -1,0 +1,16 @@
+This directory vendors the built output of `@deepseek-ai/dsh-storage-sqlite`
+version `0.1.0-rc.6`, published from the upstream DeepSeek Harness monorepo
+(https://github.com/deepseek-ai/deepseek-harness, directory
+`packages/storage/storage-sqlite`).
+
+It is vendored rather than declared as an npm dependency because this bundle
+must install from a single self-contained tarball (see CLAUDE.md §3/ADR-01);
+the upstream package is not otherwise reachable at bundle-install time.
+
+The vendored `lib/index.js` and `lib/invariant.js` are the unmodified build
+output published at `0.1.0-rc.6`; `LICENSE` in this directory is copied
+verbatim from that release.
+
+License: MIT (see ./LICENSE), copyright DeepSeek. This vendored component's
+license is independent of the license covering the rest of this repository —
+see the root LICENSE for the terms covering this project's own code.

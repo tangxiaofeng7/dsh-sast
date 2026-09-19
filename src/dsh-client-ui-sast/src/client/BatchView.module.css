@@ -1,0 +1,145 @@
+/* Batch overview tab (batch-owner-only): a header card (objective/
+   authorization/status/methodology names) over up to 100 job rows. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.objective {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.authorization {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.status {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.methodologies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.methodology {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.job {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.ordinal {
+  flex: none;
+  min-width: 24px;
+  color: var(--dsw-alias-label-caption);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.repoUrl {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--dsw-alias-label-primary);
+  overflow-wrap: anywhere;
+}
+
+.jobStatus {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.jobStatus[data-status='succeeded'] {
+  color: #fff;
+  background: var(--dsw-alias-state-success-primary);
+}
+
+.jobStatus[data-status='running'] {
+  color: #fff;
+  background: var(--dsw-alias-state-business-primary);
+}
+
+.jobStatus[data-status='failed'],
+.jobStatus[data-status='timed_out'] {
+  color: #fff;
+  background: var(--dsw-alias-state-error-primary);
+}
+
+.jobStatus[data-status='degraded'],
+.jobStatus[data-status='skipped'] {
+  color: #fff;
+  background: var(--dsw-alias-state-warn-primary);
+}
+
+.attempt {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+}
+
+.unaudited {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+  font-style: italic;
+}
+
+.fallback {
+  flex: 1 1 100%;
+  min-width: 0;
+  color: var(--dsw-alias-state-warn-primary);
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./src/dsh-sast" },
+    { "path": "./src/dsh-client-ui-sast" }
+  ]
+}

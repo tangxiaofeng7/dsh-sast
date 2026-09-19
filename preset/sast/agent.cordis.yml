@@ -1,0 +1,365 @@
+# The `sast` agent preset: white-box audit commander mode.
+#
+# The decision agent (repository worker / batch owner) gets a persona and
+# no shell rows at all (ADR-04 — code audit never executes the audited
+# code, so decision and execution agents alike have no shell/background-job
+# tool). Execution subagents get their own no-decision-tool persona plus
+# toolFilter.deny listing every decision tool and subagent/subagent_fork as a
+# second safety net. bash/pwsh/run_in_background are deliberately NOT in
+# that deny list (see the tool-subagent row's own comment) — this
+# composition never registers those tools globally in the first place, and
+# denying an unregistered tool is a fatal `tools.restrict()` error on a real
+# host, not defense-in-depth; their absence from every row here IS the
+# safety guarantee (ADR-04). Everything else in this composition (fs,
+# fs-search, skills, goals, planning, compaction, delegation minus shell,
+# ask-user, todo, web) is ordinary DSH plumbing with no sast-specific
+# behavior.
+#
+# AGENT-PLANE composition: the roster mounts this once under a standing
+# scope; every session naming it joins by scope parentage. Service rows must
+# sit inside an `isolate` realm; `dsh-sast` publishes nothing (it registers
+# model tools on the host `tools` registry, a `sast:protocol` system-prompt
+# section, and `sast`/`sastMounted` session-projection units), and it
+# consumes the host `storageDomain` facility — so the row sits loose.
+
+# ── identity ────────────────────────────────────────────────────────────────
+
+# Delta 1/4: persona replaced with the white-box audit commander. `{{model}}`
+# and `{{cwd}}` resolve from the agent's own route and workspace. The
+# scan→intent→fact→finding protocol itself arrives from the `sast:protocol`
+# system-prompt section contributed by the dsh-sast package.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are the white-box audit commander (repository worker or batch owner, as the host
+      designates), powered by the {{model}} model. Your working directory is {{cwd}}. You decide
+      and create audit intents; code reading and evidence collection are delegated to subagents,
+      which submit confirmed facts/assets/findings directly to their assigned intent. Follow the
+      sast:protocol system-prompt section exactly.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+# ── shell ───────────────────────────────────────────────────────────────────
+
+# NO shell rows at all (ADR-04). White-box audit is purely static and
+# read-only, and the audited repository is untrusted input, so the decision
+# agent gets no execution means on ANY platform — the rows are simply
+# absent, not disabled-by-condition.
+# tool-jobs (background-task control) is absent for the same reason: with
+# no bash/pwsh there is nothing for it to manage.
+
+# ── filesystem ──────────────────────────────────────────────────────────────
+
+# Both register into the host `tools` registry and provide nothing, so they
+# need no realm. tool-fs-search (ripgrep) is white-box audit's main tool;
+# tool-fs provides read access. Read-only workspace hardening (ADR-13) is
+# enforced at the OS level by M2 ingest (chmod -R a-w after clone, POSIX; a
+# write-ACL removal on Windows) rather than by a tool-fs config flag — the
+# installed @deepseek-ai/dsh-tool-fs release exposes no path-allowlist
+# option, so a write attempt against the read-only scan workspace fails at
+# the filesystem layer itself, not by a policy check here.
+- id: tool-fs
+  name: '@deepseek-ai/dsh-tool-fs'
+
+- id: tool-fs-search
+  name: '@deepseek-ai/dsh-tool-fs-search'
+  config:
+    sampleOverCapGlobResults: false
+
+# ── skills ──────────────────────────────────────────────────────────────────
+
+# The skill REGISTRY lives in the host composition and is layered per scope:
+# these rows register into THIS preset's layer of it, so they need no realm.
+# `skill-filesystem` contributes local-root discovery for agents on this
+# preset, and `tool-skill` gives them the catalog and loader — this is how
+# the decision agent reads a user audit methodology's "查什么/怎么判" body
+# before calling sast_register_skill({ name }).
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+
+# ── goals ───────────────────────────────────────────────────────────────────
+
+# Only the model-facing tool. The goal SERVICE, its session driver, and the
+# `/goal` command stay on the host plane — this row only exposes the tool
+# a decision agent calls; it composes no service of its own.
+- id: tool-goal
+  name: '@deepseek-ai/dsh-tool-goal'
+
+# ── plan mode ───────────────────────────────────────────────────────────────
+
+# Plan state is per-agent by nature, so an entry-local realm is not a
+# workaround here — it is the correct lifetime.
+- id: planning
+  name: cordis:group
+  group: true
+  isolate:
+    planMode: true
+  config:
+    - id: plan-mode
+      name: '@deepseek-ai/dsh-plan-mode'
+      # Web sessions should start in normal execution mode, not PTC/plan mode.
+      disabled: true
+      config:
+        section: |
+              You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+              Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+              The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+              Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+              Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+              When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+
+# ── compaction ──────────────────────────────────────────────────────────────
+
+# `compaction-basic` reads `toolResultPrune` through `ctx.get`, so the pruner must
+# share this realm rather than sit outside it.
+#
+# `tokenMeter` is deliberately NOT in this realm: the meter stays on the HOST
+# plane, and the rows here resolve that one instance.
+- id: compaction
+  name: cordis:group
+  group: true
+  isolate:
+    compaction: true
+    toolResultPruner: true
+  config:
+    - id: compaction-basic
+      name: '@deepseek-ai/dsh-compaction-basic'
+
+    - id: command-compact
+      name: '@deepseek-ai/dsh-command-compact'
+
+    - id: tool-result-pruner
+      name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+      config:
+        thresholdChars: 8192
+        headChars: 4096
+        tailChars: 1024
+
+# ── delegation and workflows ────────────────────────────────────────────────
+
+# The `subagents` registry and its spawn/fork backends live in the HOST
+# composition — they are process-wide infrastructure, not per-preset state.
+# This preset contributes the delegation TOOLS, which resolve that host
+# registry.
+- id: delegation
+  name: cordis:group
+  group: true
+  isolate:
+    workflowEngine: true
+  config:
+    - id: tool-subagent-control
+      name: '@deepseek-ai/dsh-tool-subagent-control'
+
+    - id: tool-subagent-list-agents
+      name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+
+    # Delta 3/4 (spawn variant): persona replaced with the read-only, no-shell
+    # audit execution subagent, and toolFilter.deny lists every decision tool
+    # plus subagent/subagent_fork as a second safety net — even if some
+    # derived preset re-adds sast_* decision tools to a subagent's scope, this
+    # subagent's own tool catalog still excludes them (ADR-04). bash/pwsh/
+    # run_in_background are deliberately NOT listed here: this preset never
+    # registers those tools at all (no shell rows anywhere in this
+    # composition), and `tools.restrict()` validates every `deny` name
+    # against the currently-known global tool registry — denying a tool that
+    # was never registered is not defense-in-depth, it is a fatal
+    # "tools.restrict() names unknown global tool" error at agent-creation
+    # time. Verified against a real host: this exact preset failed to spawn
+    # any subagent with that error until these three names were removed.
+    - id: tool-subagent
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn
+        toolName: subagent
+        backgroundMode: continuable
+        maxDepth: 1
+        persona: |-
+          你是白盒审计执行子 agent，不是指挥官。仅执行委派任务；不要创建 scan、intent、方法论注册或报告，
+          或继续委派。保留并遵守委派中的审计范围和安全约束：只读、静态分析，不得修改代码、安装依赖、
+          构建、运行脚本或扩大授权。
+
+          委派输入必须包含仓库工作区路径（workspacePath）、审计范围、父 intentId、待验证任务、相关事实
+          摘要、已知资产及可引用的资产 ID。父 intentId 必须是 sast_add_intent 刚返回的实际 ID；
+          delegation-intent-id、intent-id、<intentId> 等均为无效占位符。若委派未提供具体真实 ID，
+          不得调用 sast_submit，应简要告知父 agent 补充真实父 intentId。
+
+          所有 path 必须是你实际读到过的文件的仓库相对路径；不要凭记忆、命名习惯或框架惯例推测文件名，
+          工具会校验路径在工作区中真实存在，不存在则整条写入被拒绝。
+
+          每确认一组独立事实/资产/漏洞，就立即调用 sast_submit 提交新增结果；不要等到任务结束。
+          可分批提交，但绝不重复提交同一条数据：
+          {"intentId":"委派给出的 ID","facts":[...],"assets":[...],"findings":[...]}。
+          fact 必须含 path/detail，可选 kind/line/endLine/symbol/snippet/confidence/fromFactId；
+          asset 必须含 type/value，parentId 只能引用委派中提供的既有资产；finding 必须含 title/
+          codePath（至少一跳，每跳含真实 path），affectedAssetId 也只能引用既有资产，不能引用本次
+          新建资产；无法关联时省略该字段。没有对应结果时传空数组。
+
+          提交成功后，最终回复仅包含结论、证据摘要和提交计数，不粘贴文件原文或完整 JSON。
+        toolFilter:
+          deny:
+            - sast_start_scan
+            - sast_register_skill
+            - sast_set_skill_enabled
+            - sast_add_intent
+            - sast_update_intent
+            - sast_add_fact
+            - sast_add_finding
+            - sast_add_asset
+            - sast_triage
+            - sast_state
+            - sast_graph
+            - sast_coverage
+            - sast_report
+            - sast_start_batch
+            - sast_batch_state
+            - sast_batch_report
+            - sast_batch_resolve
+            - subagent
+            - subagent_fork
+
+    # Delta 3/4 (fork variant): identical persona and toolFilter.deny as the
+    # spawn variant above.
+    - id: tool-subagent-fork
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: fork
+        toolName: subagent_fork
+        backgroundMode: continuable
+        maxDepth: 1
+        persona: |-
+          你是白盒审计执行子 agent，不是指挥官。仅执行委派任务；不要创建 scan、intent、方法论注册或报告，
+          或继续委派。保留并遵守委派中的审计范围和安全约束：只读、静态分析，不得修改代码、安装依赖、
+          构建、运行脚本或扩大授权。
+
+          委派输入必须包含仓库工作区路径（workspacePath）、审计范围、父 intentId、待验证任务、相关事实
+          摘要、已知资产及可引用的资产 ID。父 intentId 必须是 sast_add_intent 刚返回的实际 ID；
+          delegation-intent-id、intent-id、<intentId> 等均为无效占位符。若委派未提供具体真实 ID，
+          不得调用 sast_submit，应简要告知父 agent 补充真实父 intentId。
+
+          所有 path 必须是你实际读到过的文件的仓库相对路径；不要凭记忆、命名习惯或框架惯例推测文件名，
+          工具会校验路径在工作区中真实存在，不存在则整条写入被拒绝。
+
+          每确认一组独立事实/资产/漏洞，就立即调用 sast_submit 提交新增结果；不要等到任务结束。
+          可分批提交，但绝不重复提交同一条数据：
+          {"intentId":"委派给出的 ID","facts":[...],"assets":[...],"findings":[...]}。
+          fact 必须含 path/detail，可选 kind/line/endLine/symbol/snippet/confidence/fromFactId；
+          asset 必须含 type/value，parentId 只能引用委派中提供的既有资产；finding 必须含 title/
+          codePath（至少一跳，每跳含真实 path），affectedAssetId 也只能引用既有资产，不能引用本次
+          新建资产；无法关联时省略该字段。没有对应结果时传空数组。
+
+          提交成功后，最终回复仅包含结论、证据摘要和提交计数，不粘贴文件原文或完整 JSON。
+        toolFilter:
+          deny:
+            - sast_start_scan
+            - sast_register_skill
+            - sast_set_skill_enabled
+            - sast_add_intent
+            - sast_update_intent
+            - sast_add_fact
+            - sast_add_finding
+            - sast_add_asset
+            - sast_triage
+            - sast_state
+            - sast_graph
+            - sast_coverage
+            - sast_report
+            - sast_start_batch
+            - sast_batch_state
+            - sast_batch_report
+            - sast_batch_resolve
+            - subagent
+            - subagent_fork
+
+    - id: workflow-worker-thread
+      name: '@deepseek-ai/dsh-workflow-worker-thread'
+      config:
+        provider: spawn
+
+    - id: tool-workflow
+      name: '@deepseek-ai/dsh-tool-workflow'
+
+    - id: tool-ralph
+      name: '@deepseek-ai/dsh-tool-ralph'
+      config:
+        subagentProvider: spawn
+        maxRounds: 64
+
+# ── remaining model-facing rows ─────────────────────────────────────────────
+
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
+
+- id: tool-todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: true
+
+# The `web` service and its search provider stay in the host composition; only
+# the model-facing tool is per-session. `fetch: false`: only search is
+# available, used to look up CVEs and framework documentation.
+- id: tool-web
+  name: '@deepseek-ai/dsh-tool-web'
+  config:
+    fetch: false
+    searchTimeoutMs: 60000
+
+# ── white-box audit mode ────────────────────────────────────────────────────
+
+# `sast` and `sast-batch` share two services (`sastStore`,
+# `sastBatchLineageOf`) between themselves only — `sast-batch` reads the
+# former to reuse `sast`'s open domain/artifact allocator, and `index.ts`'s
+# `sast_start_scan`/`sast_report` read the latter to auto-tag batch lineage.
+# A bare `ctx.provide()` with no realm publishes into the ROOT realm
+# (process-global), which a real host's preset-mount validator rejects
+# outright (a second session mounting this preset would collide on the same
+# service name) — verified against a real `agentPreset.select` call, which
+# failed with exactly that "process-global service(s)" error before this
+# group/isolate wrapping was added. This mirrors the `compaction`/`planning`/
+# `delegation` groups above: an entry-local realm scoped to just these two
+# rows, invisible outside this group, shared inside it.
+- id: sast-domain
+  name: cordis:group
+  group: true
+  isolate:
+    sastStore: true
+    sastBatchLineageOf: true
+  config:
+    # The single sast plugin: 14 model-facing sast_* tools on the host tools
+    # registry, the sast:protocol system-prompt section, and the standing
+    # sast/sastMounted/sastBatch session-projection units for the Web panel.
+    # Consumes the host `storageDomain` facility.
+    - id: sast
+      name: '@tangxiaofeng7/dsh-sast/sast'
+
+    # The durable batch control plane (M5, spike-D-verified): the 4
+    # sast_batch_* tools, DurableBatchScheduler, and the real
+    # ctx.agents-backed RepositoryWorkerFactory. Deliberately a separate row
+    # from `sast` above — built to its own lib/batch-scheduler.js — so a
+    # deployment can mount the single-repo `sast` row alone (M1-M4 only)
+    # without ever registering the batch tools, or mount both once it has
+    # verified spike-D in its own host. `workerAgentOptions` is a static
+    # fallback route for worker sessions; batch-plugin.ts resolves the batch
+    # OWNER's own live provider/model at sast_start_batch call time and
+    # prefers that over this config value (no Cordis config templating
+    # exists for a plugin's own `config` block — only `persona`'s `text`
+    # field templates `{{model}}`/`{{cwd}}` — so this cannot reference the
+    # composing session's route directly).
+    - id: sast-batch
+      name: '@tangxiaofeng7/dsh-sast/batch-scheduler'
+      config:
+        workerAgentOptions:
+          provider: deepseek
+          model: deepseek-chat
+
