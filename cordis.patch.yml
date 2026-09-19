@@ -1,0 +1,51 @@
+# The dsh-sast bundle patch: the white-box audit surface over
+# dsh-base + dsh-web-app. The bundle is one self-contained package — every
+# row resolves inside the bundle package itself, so the whole thing installs
+# from a single tarball via `dsh plugin add`.
+#
+# The patch contributes three things:
+# 1. the Web surface row (the per-session 白盒审计 view tab), mounting the bundle
+#    package ROOT: the client-modules scanner of DSH 0.1.2+ attributes a browser
+#    half only to a row naming an exact package (the package root specifier),
+#    and the composed entry id is that package name — which is the id
+#    `lib/ui-sast.client.js` registers itself under. A subpath row (the
+#    0.1.1-era spelling) is skipped there, leaving the tab composed nowhere;
+# 2. the sqlite backend row, as a subpath of this package. Its own entry id
+#    is `sast-storage-sqlite` — package-scoped, NOT the generic
+#    `storage-sqlite` a sibling bundle (e.g. dsh-pentest) could equally
+#    choose. Reproduced against a real host installing both bundles
+#    together: two rows sharing the literal id `storage-sqlite` crash the
+#    whole profile at boot with `duplicate loader entry id: storage-sqlite`
+#    — a fatal error, not the milder "routes get silently overridden" risk
+#    ADR-12 already documents below. Every OTHER row in this file already
+#    follows this package-scoped convention (`ui-sast`, `sast-preset-root`);
+#    this row was the one exception;
+# 3. a storage-domain route selecting the sqlite backend for the `sast`
+#    domain only — the override replaces the targeted row's whole config, so
+#    the host default backend is restated here.
+#
+# The host sast plugin belongs exclusively to the `sast` agent preset.
+# Registering it here as well duplicates its scoped tool catalog whenever that
+# preset is selected, causing client command invalidation loops.
+
+- insert:
+    - id: ui-sast
+      name: '@tangxiaofeng7/dsh-sast'
+
+    - id: sast-storage-sqlite
+      name: '@tangxiaofeng7/dsh-sast/storage-sqlite'
+      config:
+        path: !!js dshHomePath('storages', 'sast-sessions.db')
+
+- id: storage-domain
+  config:
+    backend: json
+    routes:
+      sast: sqlite
+
+# DSH rc.6 replaces this row's configured roots with its bundled preset root
+# during profile composition. `preset-root` adds this package's read-only root
+# after `agent-presets` is constructed, without copying files into DSH_HOME.
+- insert:
+    - id: sast-preset-root
+      name: '@tangxiaofeng7/dsh-sast/preset-root'
